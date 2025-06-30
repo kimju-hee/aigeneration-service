@@ -37,21 +37,16 @@ spring:
           destination: miniprojectjo
           contentType: application/json
 
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
 ai:
   openai:
-    api-key: 1 #[openaikey]
-    # 실제 키는 .env에서 주입하기
+    api-key: ${OPENAI_API_KEY}
 
 logging:
   level:
     org.hibernate.type: trace
     org.springframework.cloud: debug
-
----
-spring:
-  profiles: docker
-  cloud:
-    stream:
-      kafka:
-        binder:
-          brokers: my-kafka:9092
