@@ -32,7 +32,7 @@ services:
     depends_on:
       - kafka         # kafka의 실행 상태 확인
     ports:
-      - "8080:8080"
+      - "9092:9092"
     environment:
       SPRING_PROFILES_ACTIVE: docker
       

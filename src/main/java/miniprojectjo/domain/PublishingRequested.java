@@ -15,6 +15,8 @@ public class PublishingRequested extends AbstractEvent {
     private String status;        // 요청 상태 (e.g., REQUESTED)
     private String content;       // 원고 내용
     private Date createdAt;       // 생성 시각 (선택)
+    
+    private String eventType;  // 헤더 역할 (type="PublishingRequested")
 
     public PublishingRequested() {
         super();
