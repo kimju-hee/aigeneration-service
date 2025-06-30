@@ -15,11 +15,11 @@ services:
     depends_on:
       - zookeeper         # zookeeper의 실행 상태 확인
     ports:
-      - "8080:8080"
+      - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:8080
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
   
   # kafka의 port를 9092로 설정 (default)
