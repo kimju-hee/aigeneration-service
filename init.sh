@@ -38,6 +38,7 @@ if [ ! -d "kafka_2.13-3.7.0" ]; then
 fi
 
 export KAFKA_HOME=~/kafka/kafka_2.13-3.7.0
+export PATH=$PATH:/workspace/kafka/kafka_2.13-3.7.0/bin
 export PATH=$KAFKA_HOME/bin:$PATH
 echo "Kafka CLI PATH 설정 완료: $(which kafka-console-producer.sh)"
 

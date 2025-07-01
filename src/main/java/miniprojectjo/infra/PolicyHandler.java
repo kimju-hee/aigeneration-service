@@ -18,18 +18,25 @@ public class PolicyHandler {
     @Autowired
     AiBookGenerationRepository aiBookGenerationRepository;
 
-    // === 기본 fallback 리스너 ===
+    // 테스트 리스너
     @StreamListener(KafkaProcessor.INPUT)
-    public void fallbackListener(@Payload String eventString) {
-        log.debug("Unknown event received: {}", eventString);
+    public void rawListener(@Payload String rawJson) {
+        log.info("🔍 Raw Kafka message 수신됨: {}", rawJson);
     }
+
+
+    // // === 기본 fallback 리스너 ===
+    // @StreamListener(KafkaProcessor.INPUT)
+    // public void fallbackListener(@Payload String eventString) {
+    //     log.debug("Unknown event received: {}", eventString);
+    // }
 
     // === PublishingRequested 이벤트 수신 시, 요약 및 표지 생성 ===
     @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='PublishingRequested'")
     public void onPublishingRequested(@Payload PublishingRequested event) {
         if (!event.validate()) return;
 
-        log.info("📘 PublishingRequested received: {}", event);
+        log.info("PublishingRequested received: {}", event);
 
         // 요약 및 표지 이미지 생성 로직 호출
         AiBookGeneration.generateBookSummary(event);
