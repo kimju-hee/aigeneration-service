@@ -5,8 +5,6 @@ import javax.persistence.*;
 
 import lombok.Data;
 import miniprojectjo.AigenerationApplication;
-// import miniprojectjo.domain.AiImageService; // 위치 확인!
-// import miniprojectjo.domain.*;
 import miniprojectjo.infra.AiBookGenerationRepository;
 
 @Entity
@@ -19,40 +17,58 @@ public class AiBookGeneration {
     private Long id;
 
     private Long manuscriptId;
+
+    @Lob
     private String summary;
+    @Lob
+    private String manuscriptContent;
+    
     private String coverImageUrl;
+
     private Integer subscriptionFee;
+
     private String status;
+
     private Date createdAt;
+
     private Date updatedAt;
 
+    // Repository 빈 주입받기 위한 static 메서드
     public static AiBookGenerationRepository repository() {
         return AigenerationApplication.applicationContext.getBean(AiBookGenerationRepository.class);
     }
 
+    // AiImageService 빈 주입 메서드 (GPT API 호출 담당 서비스)
     private static AiImageService aiImageService() {
         return AigenerationApplication.applicationContext.getBean(AiImageService.class);
     }
 
-    // 1. 도서 요약 생성 요청
+    /**
+     * 1. 도서 요약 생성 요청 처리
+     */
     public static void generateBookSummary(PublishingRequested event) {
         AiBookGeneration entity = new AiBookGeneration();
         entity.setManuscriptId(event.getId());
 
-        // ✅ 요약 생성 API 호출
+        // GPT 요약 API 호출 (원고 내용은 event.getContent()에서 가져옴)
         String summary = aiImageService().generateSummary(event.getContent());
         entity.setSummary(summary);
         entity.setStatus("SUMMARY_CREATED");
         entity.setCreatedAt(new Date());
         entity.setUpdatedAt(new Date());
+
+
         repository().save(entity);
 
+        // 도서 요약 생성 이벤트 발행
         BookSummaryGenerate published = new BookSummaryGenerate(entity);
         published.setCreatedAt(new Date());
         published.publishAfterCommit();
     }
 
-    // 2. 표지 이미지 생성 요청
+    /**
+     * 2. 표지 이미지 생성 요청 처리
+     */
     public static void generateCoverImage(PublishingRequested event) {
         repository().findByManuscriptId(event.getId()).ifPresent(entity -> {
             String imageUrl = aiImageService().generateCoverImage("책 제목: " + event.getTitle());
@@ -75,17 +91,17 @@ public class AiBookGeneration {
                     + ", coverImageUrl=" + published.getCoverImageUrl());
                 return;
             }
-            
-            // ✅ 발행 전 로그 찍기
+
             System.out.println("📦 발행될 CoverImageGenerated: manuscriptId=" + published.getManuscriptId()
                 + ", coverImageUrl=" + published.getCoverImageUrl());
-            published.logAsJson(); // 직렬화 테스트 출력
+            published.logAsJson(); // 이벤트 직렬화 테스트 로그
             published.publishAfterCommit();
         });
     }
 
-
-    // 3. 요약 완료 후 등록 처리
+    /**
+     * 3. 요약 완료 후 등록 처리
+     */
     public static void registerProcessedBook(BookSummaryGenerate event) {
         repository().findByManuscriptId(event.getManuscriptId()).ifPresent(entity -> {
             entity.setUpdatedAt(new Date());
@@ -97,7 +113,9 @@ public class AiBookGeneration {
         });
     }
 
-    // 4. 표지 완료 후 등록 처리
+    /**
+     * 4. 표지 완료 후 등록 처리
+     */
     public static void registerProcessedBook(CoverImageGenerated event) {
         repository().findByManuscriptId(event.getManuscriptId()).ifPresent(entity -> {
             entity.setUpdatedAt(new Date());
@@ -109,7 +127,9 @@ public class AiBookGeneration {
         });
     }
 
-    // 5. 등록 완료 후 구독료 책정
+    /**
+     * 5. 등록 완료 후 구독료 책정 정책
+     */
     public static void subscriptionFeePolicy(Registered event) {
         repository().findByManuscriptId(event.getManuscriptId()).ifPresent(entity -> {
             entity.setSubscriptionFee(3900); // 예시 구독료
@@ -124,6 +144,7 @@ public class AiBookGeneration {
         });
     }
 
+    // 이벤트로부터 상태 변경 메서드 (optional)
     public void generateBookSummary(BookSummaryGenerate event) {
         this.summary = event.getSummary();
         this.status = "SUMMARY_CREATED";
@@ -132,6 +153,6 @@ public class AiBookGeneration {
 
     public void registerProcessedBook(Registered event) {
         this.status = event.getStatus();
-        this.updatedAt = new Date(); // 또는 event.getCreatedAt()도 괜찮음
+        this.updatedAt = new Date();
     }
 }

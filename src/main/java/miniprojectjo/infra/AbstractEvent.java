@@ -1,22 +1,37 @@
 package miniprojectjo.infra;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+
 import miniprojectjo.AigenerationApplication;
 import miniprojectjo.config.kafka.KafkaProcessor;
+import miniprojectjo.domain.*;
 import org.springframework.beans.BeanUtils;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.transaction.support.TransactionSynchronizationAdapter;
+import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.MimeTypeUtils;
 
-//<<< Clean Arch / Outbound Adaptor
-public class AbstractEvent {
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.NAME,
+    include = JsonTypeInfo.As.PROPERTY,
+    property = "eventType"
+)
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = BookSummaryGenerate.class, name = "BookSummaryGenerate"),
+    @JsonSubTypes.Type(value = CoverImageGenerated.class, name = "CoverImageGenerated"),
+    @JsonSubTypes.Type(value = Registered.class, name = "Registered"),
+    @JsonSubTypes.Type(value = SubscriptionFeeCalculated.class, name = "SubscriptionFeeCalculated")
+})
+public abstract class AbstractEvent {
 
-    String eventType;
-    Long timestamp;
+    private String eventType;
+    private Long timestamp;
 
     public AbstractEvent(Object aggregate) {
         this();
@@ -24,26 +39,18 @@ public class AbstractEvent {
     }
 
     public AbstractEvent() {
-        this.setEventType(this.getClass().getSimpleName());
+        this.eventType = this.getClass().getSimpleName();
         this.timestamp = System.currentTimeMillis();
     }
 
     public void publish() {
-        /**
-         * spring streams 방식
-         */
-        KafkaProcessor processor = AigenerationApplication.applicationContext.getBean(
-            KafkaProcessor.class
-        );
+        KafkaProcessor processor = AigenerationApplication.applicationContext.getBean(KafkaProcessor.class);
         MessageChannel outputChannel = processor.outboundTopic();
 
         outputChannel.send(
             MessageBuilder
-                .withPayload(this)
-                .setHeader(
-                    MessageHeaders.CONTENT_TYPE,
-                    MimeTypeUtils.APPLICATION_JSON
-                )
+                .withPayload(toJson())
+                .setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON)
                 .setHeader("type", getEventType())
                 .build()
         );
@@ -51,7 +58,7 @@ public class AbstractEvent {
 
     public void publishAfterCommit() {
         TransactionSynchronizationManager.registerSynchronization(
-            new TransactionSynchronizationAdapter() {
+            new TransactionSynchronization() {
                 @Override
                 public void afterCompletion(int status) {
                     AbstractEvent.this.publish();
@@ -77,20 +84,23 @@ public class AbstractEvent {
     }
 
     public boolean validate() {
-        return getEventType().equals(getClass().getSimpleName());
+        return getEventType() != null && getEventType().equals(getClass().getSimpleName());
     }
 
     public String toJson() {
-        ObjectMapper objectMapper = new ObjectMapper();
-        String json = null;
-
         try {
-            json = objectMapper.writeValueAsString(this);
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.activateDefaultTyping(
+                BasicPolymorphicTypeValidator.builder()
+                    .allowIfBaseType("miniprojectjo.domain")  // your event package
+                    .build(),
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                JsonTypeInfo.As.PROPERTY
+            );
+            return objectMapper.writeValueAsString(this);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("JSON format exception", e);
+            throw new RuntimeException("❌ JSON 직렬화 실패", e);
         }
-
-        return json;
     }
 }
-//>>> Clean Arch / Outbound Adaptor
+

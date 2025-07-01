@@ -2,6 +2,7 @@ package miniprojectjo.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -14,6 +15,7 @@ import java.util.Date;
 @Setter
 @JsonSerialize
 @JsonDeserialize
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "eventType")
 public class CoverImageGenerated extends AbstractEvent {
 
     private Long id;
@@ -35,7 +37,6 @@ public class CoverImageGenerated extends AbstractEvent {
         this.setEventType("CoverImageGenerated");
     }
 
-    // ✅ 추가된 생성자
     public CoverImageGenerated(AiBookGeneration aggregate) {
         super(aggregate);
         this.id = aggregate.getId();

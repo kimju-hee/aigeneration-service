@@ -1,49 +1,87 @@
 package miniprojectjo.infra;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import miniprojectjo.config.kafka.KafkaProcessor;
 import miniprojectjo.domain.*;
+import miniprojectjo.utils.KafkaMessageUtils;
 import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import java.util.Date;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AiBookGenerationViewHandler {
 
-    private final ProcessedResultRepository processedResultRepository;
-    private final ObjectMapper objectMapper;
+    private final AiBookGenerationRepository aiBookGenerationRepository;
 
-    @StreamListener(value = "event-in", condition = "headers['type']=='BookSummaryGenerate'")
-    public void onBookSummaryGenerate(@Payload String payload) {
-        BookSummaryGenerate event = decodeEvent(payload);
-        log.info("📚 BookSummaryGenerate 이벤트 수신: {}", event);
+    @StreamListener(KafkaProcessor.INPUT)
+    public void handleKafkaMessage(@Payload byte[] messageBytes) {
+        String message = new String(messageBytes, StandardCharsets.UTF_8);
+        try {
+            // 공통 메시지 역직렬화 (Base64 + Jackson + eventType 기반)
+            AbstractEvent event = KafkaMessageUtils.decodeToAbstractEvent(message);
+            log.info("📨 수신 이벤트 타입: {}", event.getEventType());
 
-        ProcessedResult result = processedResultRepository.findById(event.getId())
-                .orElseThrow(() -> new IllegalArgumentException("❌ 존재하지 않는 ID"));
+            switch (event.getEventType()) {
+                case "BookSummaryGenerate":
+                    handleBookSummaryGenerate((BookSummaryGenerate) event);
+                    break;
 
-        result.setSummary(event.getSummary());
-        result.setStatus("SUMMARY_COMPLETED");
+                case "CoverImageGenerated":
+                    handleCoverImageGenerated((CoverImageGenerated) event);
+                    break;
 
-        processedResultRepository.save(result);
+                case "SubscriptionFeeCalculated":
+                    handleSubscriptionFeeCalculated((SubscriptionFeeCalculated) event);
+                    break;
+
+                default:
+                    log.warn("⚠️ 처리되지 않은 이벤트 타입: {}", event.getEventType());
+            }
+
+        } catch (Exception e) {
+            log.error("❌ Kafka 메시지 처리 실패: {}", e.getMessage(), e);
+        }
     }
 
-    private BookSummaryGenerate decodeEvent(String payload) {
-        try {
-            byte[] decodedBytes = Base64.getDecoder().decode(payload);
-            String decodedJson = new String(decodedBytes, StandardCharsets.UTF_8);
+    private void handleBookSummaryGenerate(BookSummaryGenerate event) {
+        if (!event.validate()) return;
 
-            log.info("✅ 디코딩된 JSON: {}", decodedJson);
+        AiBookGeneration aiBookGeneration = new AiBookGeneration();
+        aiBookGeneration.setId(event.getId());
+        aiBookGeneration.setManuscriptId(event.getManuscriptId());
+        aiBookGeneration.setSummary(event.getSummary());
+        aiBookGeneration.setStatus("SUMMARY_CREATED");
+        aiBookGeneration.setCreatedAt(event.getCreatedAt());
+        aiBookGeneration.setUpdatedAt(new Date());
 
-            return objectMapper.readValue(decodedJson, BookSummaryGenerate.class);
-        } catch (Exception e) {
-            log.error("❌ [BookSummaryGenerate] 역직렬화 실패: {}", e.getMessage());
-            throw new RuntimeException(e);
-        }
+        aiBookGenerationRepository.save(aiBookGeneration);
+    }
+
+    private void handleCoverImageGenerated(CoverImageGenerated event) {
+        if (!event.validate()) return;
+
+        aiBookGenerationRepository.findById(event.getId()).ifPresent(aiBookGeneration -> {
+            aiBookGeneration.setCoverImageUrl(event.getCoverImageUrl());
+            aiBookGeneration.setStatus("COVER_CREATED");
+            aiBookGeneration.setUpdatedAt(new Date());
+            aiBookGenerationRepository.save(aiBookGeneration);
+        });
+    }
+
+    private void handleSubscriptionFeeCalculated(SubscriptionFeeCalculated event) {
+        if (!event.validate()) return;
+
+        aiBookGenerationRepository.findById(event.getId()).ifPresent(aiBookGeneration -> {
+            aiBookGeneration.setSubscriptionFee(event.getSubscriptionFee());
+            aiBookGeneration.setStatus("FEE_CALCULATED");
+            aiBookGeneration.setUpdatedAt(new Date());
+            aiBookGenerationRepository.save(aiBookGeneration);
+        });
     }
 }

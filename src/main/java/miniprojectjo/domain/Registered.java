@@ -23,7 +23,7 @@ public class Registered extends AbstractEvent {
     private String status;
     private Date createdAt;
 
-    // ✅ JSON 역직렬화를 위한 생성자
+    // ✅ 역직렬화용 생성자
     @JsonCreator
     public Registered(
         @JsonProperty("id") Long id,
@@ -44,6 +44,7 @@ public class Registered extends AbstractEvent {
         this.setEventType("Registered");
     }
 
+    // ✅ 도메인 이벤트로 생성
     public Registered(AiBookGeneration aggregate) {
         super(aggregate);
         this.id = aggregate.getId();
@@ -55,12 +56,13 @@ public class Registered extends AbstractEvent {
         this.createdAt = new Date();
         this.setEventType("Registered");
     }
-        // Registered.java
+
+    // ✅ 서브용 생성자 (선택적 사용)
     public Registered(BookSummaryGenerate event) {
         this.manuscriptId = event.getManuscriptId();
         this.summary = event.getSummary();
-        this.status = "SUMMARY_CREATED"; // 또는 적절한 상태
-        this.createdAt = new Date(); // 또는 event.getCreatedAt();
-        this.setEventType(this.getClass().getSimpleName());
+        this.status = "SUMMARY_CREATED";
+        this.createdAt = event.getCreatedAt() != null ? event.getCreatedAt() : new Date();
+        this.setEventType("Registered");
     }
 }

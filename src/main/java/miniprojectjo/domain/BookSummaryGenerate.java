@@ -2,6 +2,7 @@ package miniprojectjo.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.*;
@@ -13,6 +14,7 @@ import java.util.Date;
 @Setter
 @JsonSerialize
 @JsonDeserialize
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "eventType")
 public class BookSummaryGenerate extends AbstractEvent {
 
     private Long id;
