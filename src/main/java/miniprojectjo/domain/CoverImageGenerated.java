@@ -1,19 +1,17 @@
 package miniprojectjo.domain;
 
-import java.util.Date;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
 import lombok.*;
 import miniprojectjo.infra.AbstractEvent;
 
-//<<< DDD / Domain Event
-@Data
-@ToString
-@NoArgsConstructor
+import java.util.Date;
+
+@Getter
+@Setter
 @JsonSerialize
 @JsonDeserialize
 public class CoverImageGenerated extends AbstractEvent {
@@ -23,7 +21,6 @@ public class CoverImageGenerated extends AbstractEvent {
     private String coverImageUrl;
     private Date createdAt;
 
-    // ✅ JSON 역직렬화용 생성자 추가
     @JsonCreator
     public CoverImageGenerated(
         @JsonProperty("id") Long id,
@@ -38,6 +35,7 @@ public class CoverImageGenerated extends AbstractEvent {
         this.setEventType("CoverImageGenerated");
     }
 
+    // ✅ 추가된 생성자
     public CoverImageGenerated(AiBookGeneration aggregate) {
         super(aggregate);
         this.id = aggregate.getId();
@@ -49,12 +47,11 @@ public class CoverImageGenerated extends AbstractEvent {
 
     public void logAsJson() {
         try {
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            ObjectMapper mapper = new ObjectMapper();
             String json = mapper.writeValueAsString(this);
-            System.out.println("📤 직렬화 결과 JSON = " + json);
+            System.out.println("📤 이벤트 직렬화: " + json);
         } catch (Exception e) {
-            System.out.println("❌ 직렬화 실패: " + e.getMessage());
+            System.out.println("❌ JSON 직렬화 실패: " + e.getMessage());
         }
     }
 }
-//>>> DDD / Domain Event

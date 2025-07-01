@@ -1,14 +1,13 @@
 package miniprojectjo.domain;
 
-import java.util.Date;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
 import lombok.*;
 import miniprojectjo.infra.AbstractEvent;
+
+import java.util.Date;
 
 @Getter
 @Setter

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
 import lombok.*;
 import miniprojectjo.infra.AbstractEvent;
 
@@ -24,7 +23,7 @@ public class Registered extends AbstractEvent {
     private String status;
     private Date createdAt;
 
-    // ✅ JSON 역직렬화를 위한 생성자ㅇ
+    // ✅ JSON 역직렬화를 위한 생성자
     @JsonCreator
     public Registered(
         @JsonProperty("id") Long id,
@@ -45,7 +44,6 @@ public class Registered extends AbstractEvent {
         this.setEventType("Registered");
     }
 
-    // ✅ 도메인 객체 기반 이벤트 생성자
     public Registered(AiBookGeneration aggregate) {
         super(aggregate);
         this.id = aggregate.getId();
@@ -53,7 +51,7 @@ public class Registered extends AbstractEvent {
         this.summary = aggregate.getSummary();
         this.coverImageUrl = aggregate.getCoverImageUrl();
         this.subscriptionFee = aggregate.getSubscriptionFee();
-        this.status = aggregate.getStatus();
+        this.status = "DONE";
         this.createdAt = new Date();
         this.setEventType("Registered");
     }
