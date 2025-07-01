@@ -23,4 +23,14 @@ sudo apt-get install -y azure-cli
 echo "[3] Helm 설치"
 curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 
+
+echo "[4] maven snapshot 설치"
+mvn clean package
+mvn clean package -DskipTests
+
+echo "[5] Kafka 실행"
+docker-compose up -d
+
+export $(cat .env | xargs)
+
 echo "모든 초기 설정 완료!"
