@@ -8,8 +8,8 @@ import miniprojectjo.infra.AbstractEvent;
 import java.util.Date;
 
 @Data
+@NoArgsConstructor // ✅ Jackson 역직렬화를 위한 기본 생성자
 @ToString
-@NoArgsConstructor
 public class Registered extends AbstractEvent {
 
     private Long id;
@@ -20,7 +20,7 @@ public class Registered extends AbstractEvent {
     private String status;
     private Date createdAt;
 
-    // 🔧 Jackson이 사용할 생성자
+    // ✅ JSON 역직렬화를 위한 생성자
     @JsonCreator
     public Registered(
         @JsonProperty("id") Long id,
@@ -38,10 +38,10 @@ public class Registered extends AbstractEvent {
         this.subscriptionFee = subscriptionFee;
         this.status = status;
         this.createdAt = createdAt;
-        this.setEventType("Registered"); // 이벤트 타입 설정
+        this.setEventType("Registered");
     }
 
-    // 도메인 객체 → 이벤트로 변환
+    // ✅ 도메인 객체 기반 이벤트 생성자
     public Registered(AiBookGeneration aggregate) {
         super(aggregate);
         this.id = aggregate.getId();
