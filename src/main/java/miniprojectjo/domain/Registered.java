@@ -2,14 +2,18 @@ package miniprojectjo.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
 import lombok.*;
 import miniprojectjo.infra.AbstractEvent;
 
 import java.util.Date;
 
-@Data
-@NoArgsConstructor // ✅ Jackson 역직렬화를 위한 기본 생성자
-@ToString
+@Getter
+@Setter
+@JsonSerialize
+@JsonDeserialize
 public class Registered extends AbstractEvent {
 
     private Long id;

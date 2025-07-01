@@ -53,8 +53,11 @@ public class AiBookGenerationViewHandler {
     @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='Registered'")
     public void onRegistered(Message<byte[]> message) {
         try {
-            String encodedPayload = new String(message.getPayload(), StandardCharsets.UTF_8);
-            Registered event = decodePayload(encodedPayload, Registered.class);
+            String payloadBase64 = new String(message.getPayload(), StandardCharsets.UTF_8);
+            String decodedJson = new String(Base64.getDecoder().decode(payloadBase64), StandardCharsets.UTF_8);
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            Registered event = objectMapper.readValue(decodedJson, Registered.class);
 
             if (event != null && event.validate()) {
                 log.info("📦 Registered received: {}", event);
@@ -65,9 +68,10 @@ public class AiBookGenerationViewHandler {
                 }
             }
         } catch (Exception e) {
-            log.error("❌ [Registered 처리 중 오류]: {}", e.getMessage(), e);
+            log.error("❌ Registered 이벤트 처리 실패: {}", e.getMessage(), e);
         }
     }
+
 
 
     @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='CoverImageGenerated'")
