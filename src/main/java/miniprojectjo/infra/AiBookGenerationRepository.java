@@ -11,6 +11,5 @@ import java.util.Optional;
     path = "aiBookGenerations"
 )
 public interface AiBookGenerationRepository extends JpaRepository<AiBookGeneration, Long> {
-
     Optional<AiBookGeneration> findByManuscriptId(Long manuscriptId);
 }

@@ -58,7 +58,7 @@ public class AiBookGenerationController {
     @PostMapping("/mock")
     public AiBookGeneration createMockData() {
         AiBookGeneration entity = new AiBookGeneration();
-        entity.setManuscriptId(123L);
+        entity.setManuscriptId(1L);
         entity.setStatus("REQUESTED");
         entity.setManuscriptContent("옛날 옛적에 백성공주가 살았는데, 그녀는 용감하고 지혜로웠습니다. 왕국에 큰 위기가 닥치자 그녀가 문제를 해결했습니다."); // 임시 원고 내용
         entity.setSummary(null);

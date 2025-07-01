@@ -20,9 +20,10 @@ public class AiBookGeneration {
 
     @Lob
     private String summary;
+
     @Lob
     private String manuscriptContent;
-    
+
     private String coverImageUrl;
 
     private Integer subscriptionFee;
@@ -33,37 +34,35 @@ public class AiBookGeneration {
 
     private Date updatedAt;
 
-    // Repository 빈 주입받기 위한 static 메서드
+    // Repository 빈 주입
     public static AiBookGenerationRepository repository() {
         return AigenerationApplication.applicationContext.getBean(AiBookGenerationRepository.class);
     }
 
-    // AiImageService 빈 주입 메서드 (GPT API 호출 담당 서비스)
     private static AiImageService aiImageService() {
         return AigenerationApplication.applicationContext.getBean(AiImageService.class);
     }
 
     /**
-     * 1. 도서 요약 생성 요청 처리
+     * 1. 도서 요약 생성 요청 처리 (기존 entity 수정!)
      */
     public static void generateBookSummary(PublishingRequested event) {
-        AiBookGeneration entity = new AiBookGeneration();
-        entity.setManuscriptId(event.getId());
+        repository().findByManuscriptId(event.getId()).ifPresent(entity -> {
+            String summary = aiImageService().generateSummary(event.getContent());
 
-        // GPT 요약 API 호출 (원고 내용은 event.getContent()에서 가져옴)
-        String summary = aiImageService().generateSummary(event.getContent());
-        entity.setSummary(summary);
-        entity.setStatus("SUMMARY_CREATED");
-        entity.setCreatedAt(new Date());
-        entity.setUpdatedAt(new Date());
+            entity.setSummary(summary);
+            entity.setStatus("SUMMARY_CREATED");
+            entity.setUpdatedAt(new Date());
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(new Date());
+            }
 
+            repository().save(entity);
 
-        repository().save(entity);
-
-        // 도서 요약 생성 이벤트 발행
-        BookSummaryGenerate published = new BookSummaryGenerate(entity);
-        published.setCreatedAt(new Date());
-        published.publishAfterCommit();
+            BookSummaryGenerate published = new BookSummaryGenerate(entity);
+            published.setCreatedAt(new Date());
+            published.publishAfterCommit();
+        });
     }
 
     /**
@@ -84,17 +83,6 @@ public class AiBookGeneration {
             repository().save(entity);
 
             CoverImageGenerated published = new CoverImageGenerated(entity);
-
-            if (published.getManuscriptId() == null || published.getCoverImageUrl() == null) {
-                System.out.println("⚠️ CoverImageGenerated 이벤트 생성 실패 - 필드 누락");
-                System.out.println("📭 현재 이벤트 상태: manuscriptId=" + published.getManuscriptId()
-                    + ", coverImageUrl=" + published.getCoverImageUrl());
-                return;
-            }
-
-            System.out.println("📦 발행될 CoverImageGenerated: manuscriptId=" + published.getManuscriptId()
-                + ", coverImageUrl=" + published.getCoverImageUrl());
-            published.logAsJson(); // 이벤트 직렬화 테스트 로그
             published.publishAfterCommit();
         });
     }
@@ -132,7 +120,7 @@ public class AiBookGeneration {
      */
     public static void subscriptionFeePolicy(Registered event) {
         repository().findByManuscriptId(event.getManuscriptId()).ifPresent(entity -> {
-            entity.setSubscriptionFee(3900); // 예시 구독료
+            entity.setSubscriptionFee(3900); // 예시
             entity.setStatus("PRICED");
             entity.setUpdatedAt(new Date());
             repository().save(entity);

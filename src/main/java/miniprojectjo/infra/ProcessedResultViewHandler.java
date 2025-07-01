@@ -39,30 +39,48 @@ public class ProcessedResultViewHandler {
     private void handleBookSummaryGenerate(BookSummaryGenerate event) {
         if (!event.validate()) return;
 
-        processedResultRepository.findByManuscriptId(event.getManuscriptId()).ifPresent(result -> {
-            result.setSummary(event.getSummary());
-            result.setStatus("SUMMARY_GENERATED");
-            processedResultRepository.save(result);
-        });
+        ProcessedResult result = processedResultRepository
+            .findByManuscriptId(event.getManuscriptId())
+            .orElseGet(() -> {
+                ProcessedResult newResult = new ProcessedResult();
+                newResult.setManuscriptId(event.getManuscriptId());
+                return newResult;
+            });
+
+        result.setSummary(event.getSummary());
+        result.setStatus("SUMMARY_GENERATED");
+        processedResultRepository.save(result);
     }
 
     private void handleCoverImageGenerated(CoverImageGenerated event) {
         if (!event.validate()) return;
 
-        processedResultRepository.findByManuscriptId(event.getManuscriptId()).ifPresent(result -> {
-            result.setCoverImageUrl(event.getCoverImageUrl());
-            result.setStatus("COVER_GENERATED");
-            processedResultRepository.save(result);
-        });
+        ProcessedResult result = processedResultRepository
+            .findByManuscriptId(event.getManuscriptId())
+            .orElseGet(() -> {
+                ProcessedResult newResult = new ProcessedResult();
+                newResult.setManuscriptId(event.getManuscriptId());
+                return newResult;
+            });
+
+        result.setCoverImageUrl(event.getCoverImageUrl());
+        result.setStatus("COVER_GENERATED");
+        processedResultRepository.save(result);
     }
 
     private void handleSubscriptionFeeCalculated(SubscriptionFeeCalculated event) {
         if (!event.validate()) return;
 
-        processedResultRepository.findByManuscriptId(event.getManuscriptId()).ifPresent(result -> {
-            result.setSubscriptionFee(event.getSubscriptionFee());
-            result.setStatus("REGISTERED");
-            processedResultRepository.save(result);
-        });
+        ProcessedResult result = processedResultRepository
+            .findByManuscriptId(event.getManuscriptId())
+            .orElseGet(() -> {
+                ProcessedResult newResult = new ProcessedResult();
+                newResult.setManuscriptId(event.getManuscriptId());
+                return newResult;
+            });
+
+        result.setSubscriptionFee(event.getSubscriptionFee());
+        result.setStatus("REGISTERED");
+        processedResultRepository.save(result);
     }
 }

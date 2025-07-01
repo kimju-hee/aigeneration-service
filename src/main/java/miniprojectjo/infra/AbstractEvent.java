@@ -6,9 +6,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 
+import java.util.Base64;
+import java.nio.charset.StandardCharsets;
+
 import miniprojectjo.AigenerationApplication;
 import miniprojectjo.config.kafka.KafkaProcessor;
 import miniprojectjo.domain.*;
+
 import org.springframework.beans.BeanUtils;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHeaders;
@@ -47,13 +51,28 @@ public abstract class AbstractEvent {
         KafkaProcessor processor = AigenerationApplication.applicationContext.getBean(KafkaProcessor.class);
         MessageChannel outputChannel = processor.outboundTopic();
 
-        outputChannel.send(
-            MessageBuilder
-                .withPayload(toJson())
-                .setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON)
-                .setHeader("type", getEventType())
-                .build()
-        );
+        try {
+            // JSON 직렬화
+            String jsonEvent = toJson();
+
+            // Base64 인코딩
+            String encodedEvent = Base64.getEncoder().encodeToString(jsonEvent.getBytes(StandardCharsets.UTF_8));
+
+            // Kafka로 전송
+            outputChannel.send(
+                MessageBuilder
+                    .withPayload(encodedEvent)  // Base64 인코딩된 JSON 문자열
+                    .setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.TEXT_PLAIN)  // 중요: JSON 아님
+                    .setHeader("type", getEventType())
+                    .build()
+            );
+
+            System.out.println("📦 Base64 인코딩된 이벤트 발행 완료: " + encodedEvent);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("❌ 메시지 발행 실패", e);
+        }
     }
 
     public void publishAfterCommit() {
@@ -92,7 +111,7 @@ public abstract class AbstractEvent {
             ObjectMapper objectMapper = new ObjectMapper();
             objectMapper.activateDefaultTyping(
                 BasicPolymorphicTypeValidator.builder()
-                    .allowIfBaseType("miniprojectjo.domain")  // your event package
+                    .allowIfBaseType("miniprojectjo.domain")
                     .build(),
                 ObjectMapper.DefaultTyping.NON_FINAL,
                 JsonTypeInfo.As.PROPERTY
@@ -103,4 +122,3 @@ public abstract class AbstractEvent {
         }
     }
 }
-
