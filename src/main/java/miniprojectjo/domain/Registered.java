@@ -55,4 +55,12 @@ public class Registered extends AbstractEvent {
         this.createdAt = new Date();
         this.setEventType("Registered");
     }
+        // Registered.java
+    public Registered(BookSummaryGenerate event) {
+        this.manuscriptId = event.getManuscriptId();
+        this.summary = event.getSummary();
+        this.status = "SUMMARY_CREATED"; // 또는 적절한 상태
+        this.createdAt = new Date(); // 또는 event.getCreatedAt();
+        this.setEventType(this.getClass().getSimpleName());
+    }
 }

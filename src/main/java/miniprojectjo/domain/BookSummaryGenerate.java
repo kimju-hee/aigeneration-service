@@ -42,4 +42,6 @@ public class BookSummaryGenerate extends AbstractEvent {
         this.createdAt = new Date();
         this.setEventType("BookSummaryGenerate");
     }
+
+
 }
