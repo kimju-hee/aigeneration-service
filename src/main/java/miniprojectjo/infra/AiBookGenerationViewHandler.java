@@ -1,15 +1,17 @@
 package miniprojectjo.infra;
 
-// import com.fasterxml.jackson.databind.ObjectMapper; // 이제 필요 없음
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import miniprojectjo.config.kafka.KafkaProcessor;
 import miniprojectjo.domain.*;
 import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.messaging.handler.annotation.Payload;
-// import org.springframework.messaging.Message; // 이제 필요 없음
-// import java.util.Base64; // 이제 필요 없음
+import org.springframework.messaging.Message;
 import org.springframework.stereotype.Service;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 @Slf4j
 @Service
@@ -18,11 +20,20 @@ public class AiBookGenerationViewHandler {
 
     private final AiBookGenerationRepository aiBookGenerationRepository;
 
-    // decodePayload 메서드를 완전히 제거합니다.
-    // Spring Cloud Stream이 자동으로 JSON 역직렬화를 처리할 것입니다.
+    // ✅ Base64 문자열 디코딩 후 JSON 역직렬화 메서드
+    private <T> T decodePayload(String encodedPayload, Class<T> clazz) {
+        try {
+            byte[] decodedBytes = Base64.getDecoder().decode(encodedPayload);
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.readValue(decodedBytes, clazz);
+        } catch (Exception e) {
+            log.error("❌ Failed to decode payload into {}: {}", clazz.getSimpleName(), e.getMessage(), e);
+            return null;
+        }
+    }
 
     @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='BookSummaryGenerate'")
-    public void onBookSummaryGenerate(@Payload BookSummaryGenerate event) { // @Payload로 직접 객체 받기
+    public void onBookSummaryGenerate(@Payload BookSummaryGenerate event) {
         try {
             if (event != null && event.validate()) {
                 log.info("✅ [BookSummaryGenerate 수신]: {}", event);
@@ -31,27 +42,28 @@ public class AiBookGenerationViewHandler {
                     book.generateBookSummary(event);
                     aiBookGenerationRepository.save(book);
                 } else {
-                    log.warn("✅ [BookSummaryGenerate 수신]: AiBookGeneration(ID: {})을 찾을 수 없습니다.", event.getId());
+                    log.warn("✅ [BookSummaryGenerate] ID {}의 엔티티 없음", event.getId());
                 }
             }
         } catch (Exception e) {
-            // 이제 이 catch 블록은 Spring Cloud Stream의 MessageConversionException을 직접 받지 않고,
-            // 여러분의 비즈니스 로직(event.validate() 등)에서 발생하는 예외를 처리하게 됩니다.
             log.error("❌ [BookSummaryGenerate 처리 중 오류]: {}", e.getMessage(), e);
         }
     }
 
     @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='Registered'")
-    public void onRegistered(@Payload Registered event) { // @Payload로 직접 객체 받기
+    public void onRegistered(Message<byte[]> message) {
         try {
+            String encodedPayload = new String(message.getPayload(), StandardCharsets.UTF_8);
+            Registered event = decodePayload(encodedPayload, Registered.class);
+
             if (event != null && event.validate()) {
                 log.info("📦 Registered received: {}", event);
                 AiBookGeneration book = aiBookGenerationRepository.findById(event.getId()).orElse(null);
                 if (book != null) {
-                    book.registerProcessedBook(event); // Registered 이벤트 객체를 인자로 넘기는 것이 더 적절해 보입니다.
+                    book.registerProcessedBook(event);
                     aiBookGenerationRepository.save(book);
                 } else {
-                    log.warn("📦 Registered 수신]: AiBookGeneration(ID: {})을 찾을 수 없습니다.", event.getId());
+                    log.warn("📦 [Registered] ID {}의 책이 존재하지 않습니다.", event.getId());
                 }
             }
         } catch (Exception e) {
@@ -60,7 +72,7 @@ public class AiBookGenerationViewHandler {
     }
 
     @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='CoverImageGenerated'")
-    public void onCoverImageGenerated(@Payload CoverImageGenerated event) { // @Payload로 직접 객체 받기
+    public void onCoverImageGenerated(@Payload CoverImageGenerated event) {
         try {
             if (event != null && event.validate()) {
                 log.info("🖼️ CoverImageGenerated received: {}", event);
@@ -69,7 +81,7 @@ public class AiBookGenerationViewHandler {
                     book.registerProcessedBook(event);
                     aiBookGenerationRepository.save(book);
                 } else {
-                    log.warn("🖼️ AiBookGeneration(ID: {}) not found", event.getId());
+                    log.warn("🖼️ [CoverImageGenerated] ID {}의 책이 존재하지 않습니다.", event.getId());
                 }
             }
         } catch (Exception e) {
