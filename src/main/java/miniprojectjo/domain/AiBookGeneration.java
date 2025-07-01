@@ -54,17 +54,35 @@ public class AiBookGeneration {
     // 2. 표지 이미지 생성 요청
     public static void generateCoverImage(PublishingRequested event) {
         repository().findByManuscriptId(event.getId()).ifPresent(entity -> {
-            // ✅ 이미지 생성 API 호출
             String imageUrl = aiImageService().generateCoverImage("책 제목: " + event.getTitle());
+
+            if (imageUrl == null || imageUrl.isBlank()) {
+                System.out.println("⚠️ 이미지 생성 실패 - 이미지 URL이 null입니다.");
+                return;
+            }
+
             entity.setCoverImageUrl(imageUrl);
             entity.setStatus("COVER_GENERATED");
             entity.setUpdatedAt(new Date());
             repository().save(entity);
 
             CoverImageGenerated published = new CoverImageGenerated(entity);
+
+            if (published.getManuscriptId() == null || published.getCoverImageUrl() == null) {
+                System.out.println("⚠️ CoverImageGenerated 이벤트 생성 실패 - 필드 누락");
+                System.out.println("📭 현재 이벤트 상태: manuscriptId=" + published.getManuscriptId()
+                    + ", coverImageUrl=" + published.getCoverImageUrl());
+                return;
+            }
+            
+            // ✅ 발행 전 로그 찍기
+            System.out.println("📦 발행될 CoverImageGenerated: manuscriptId=" + published.getManuscriptId()
+                + ", coverImageUrl=" + published.getCoverImageUrl());
+            published.logAsJson(); // 직렬화 테스트 출력
             published.publishAfterCommit();
         });
     }
+
 
     // 3. 요약 완료 후 등록 처리
     public static void registerProcessedBook(BookSummaryGenerate event) {
