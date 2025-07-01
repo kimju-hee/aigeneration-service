@@ -122,4 +122,9 @@ public class AiBookGeneration {
             published.publishAfterCommit();
         });
     }
+
+    public void generateBookSummary(BookSummaryGenerate event) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'generateBookSummary'");
+    }
 }

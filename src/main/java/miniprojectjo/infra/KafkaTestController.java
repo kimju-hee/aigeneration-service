@@ -18,9 +18,16 @@ public class KafkaTestController {
 
     @PostMapping("/publish")
     public String publish(@RequestBody PublishingRequested event) {
-        event.setEventType("PublishingRequested");  // 중요: 이벤트 타입
+        event.setEventType("PublishingRequested");  // ✅ Kafka 수신을 위한 헤더
         event.setCreatedAt(new Date());
+
+        // ✅ [1] 요청 도달 확인 로그
+        System.out.println("✅ KafkaTestController 진입 성공");
+        System.out.println("📦 발행할 이벤트: " + event);
+
+        // ✅ [2] Kafka로 이벤트 발행
         kafkaTemplate.send("miniprojectjo", event);
+
         return "Event published: " + event.getTitle();
     }
 }

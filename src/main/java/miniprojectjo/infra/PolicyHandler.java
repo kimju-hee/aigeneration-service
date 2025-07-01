@@ -1,5 +1,6 @@
 package miniprojectjo.infra;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import miniprojectjo.config.kafka.KafkaProcessor;
 import miniprojectjo.domain.*;
@@ -10,6 +11,9 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+
 @Slf4j
 @Service
 @Transactional(readOnly = true)
@@ -18,55 +22,65 @@ public class PolicyHandler {
     @Autowired
     AiBookGenerationRepository aiBookGenerationRepository;
 
-    // 테스트 리스너
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private <T> T decodePayload(String base64Encoded, Class<T> clazz) {
+        try {
+            byte[] decodedBytes = Base64.getDecoder().decode(base64Encoded);
+            String json = new String(decodedBytes, StandardCharsets.UTF_8);
+            return objectMapper.readValue(json, clazz);
+        } catch (Exception e) {
+            log.error("❌ JSON 디코딩 실패: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
     @StreamListener(KafkaProcessor.INPUT)
-    public void rawListener(@Payload String rawJson) {
-        log.info("🔍 Raw Kafka message 수신됨: {}", rawJson);
+    public void rawListener(org.springframework.messaging.Message<byte[]> message) {
+        String json = new String(message.getPayload(), StandardCharsets.UTF_8);
+        System.out.println("📥 Kafka CLI 메시지 수신:");
+        System.out.println(" - Headers: " + message.getHeaders());
+        System.out.println(" - Payload: " + json);
     }
 
-
-    // // === 기본 fallback 리스너 ===
-    // @StreamListener(KafkaProcessor.INPUT)
-    // public void fallbackListener(@Payload String eventString) {
-    //     log.debug("Unknown event received: {}", eventString);
-    // }
-
-    // === PublishingRequested 이벤트 수신 시, 요약 및 표지 생성 ===
+    // === PublishingRequested 이벤트 수신: 요약 및 표지 생성 ===
     @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='PublishingRequested'")
-    public void onPublishingRequested(@Payload PublishingRequested event) {
-        if (!event.validate()) return;
-
-        log.info("PublishingRequested received: {}", event);
-
-        // 요약 및 표지 이미지 생성 로직 호출
-        AiBookGeneration.generateBookSummary(event);
-        AiBookGeneration.generateCoverImage(event);
+    public void onPublishingRequested(@Payload String encodedPayload) {
+        PublishingRequested event = decodePayload(encodedPayload, PublishingRequested.class);
+        if (event != null) {
+            log.info("📗 PublishingRequested received: {}", event);
+            AiBookGeneration.generateBookSummary(event);
+            AiBookGeneration.generateCoverImage(event);
+        }
     }
 
-    // === 요약 생성 이벤트 수신 시, 처리 정보 등록 ===
+    // === BookSummaryGenerate 이벤트 수신: 처리 정보 등록 ===
     @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='BookSummaryGenerate'")
-    public void onBookSummaryGenerated(@Payload BookSummaryGenerate event) {
-        if (!event.validate()) return;
-
-        log.info("BookSummaryGenerate received: {}", event);
-        AiBookGeneration.registerProcessedBook(event);
+    public void onBookSummaryGenerated(@Payload String encodedPayload) {
+        BookSummaryGenerate event = decodePayload(encodedPayload, BookSummaryGenerate.class);
+        if (event != null && event.validate()) {
+            log.info("📝 BookSummaryGenerate received: {}", event);
+            AiBookGeneration.registerProcessedBook(event);
+        }
     }
 
-    // === 표지 생성 이벤트 수신 시, 처리 정보 등록 ===
+    // === CoverImageGenerated 이벤트 수신: 처리 정보 등록 ===
     @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='CoverImageGenerated'")
-    public void onCoverImageGenerated(@Payload CoverImageGenerated event) {
-        if (!event.validate()) return;
-
-        log.info("CoverImageGenerated received: {}", event);
-        AiBookGeneration.registerProcessedBook(event);
+    public void onCoverImageGenerated(@Payload String encodedPayload) {
+        CoverImageGenerated event = decodePayload(encodedPayload, CoverImageGenerated.class);
+        if (event != null && event.validate()) {
+            log.info("🖼️ CoverImageGenerated received: {}", event);
+            AiBookGeneration.registerProcessedBook(event);
+        }
     }
 
-    // === 등록 완료 시 구독료 자동 책정 ===
+    // === Registered 이벤트 수신: 구독료 정책 적용 ===
     @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='Registered'")
-    public void onRegistered(@Payload Registered event) {
-        if (!event.validate()) return;
-
-        log.info("Registered event received (for pricing): {}", event);
-        AiBookGeneration.subscriptionFeePolicy(event);
+    public void onRegistered(@Payload String encodedPayload) {
+        Registered event = decodePayload(encodedPayload, Registered.class);
+        if (event != null && event.validate()) {
+            log.info("💰 Registered received: {}", event);
+            AiBookGeneration.subscriptionFeePolicy(event);
+        }
     }
 }
