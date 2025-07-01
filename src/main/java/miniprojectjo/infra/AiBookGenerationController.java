@@ -64,4 +64,5 @@ public class AiBookGenerationController {
 
         return aiBookGenerationRepository.save(entity);
     }
+    
 }

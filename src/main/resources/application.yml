@@ -33,6 +33,11 @@ spring:
           group: aigeneration
           destination: miniprojectjo
           contentType: application/json
+          consumer:
+            value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer # 이 부분이 중요합니다.
+            properties:
+              spring.json.value.default.type: miniprojectjo.domain.AbstractEvent
+              spring.json.trusted.packages: miniprojectjo.domain.*, miniprojectjo.infra.*
         event-out:
           destination: miniprojectjo
           contentType: application/json

@@ -7,7 +7,6 @@ import miniprojectjo.infra.AbstractEvent;
 
 import java.util.Date;
 
-//<<< DDD / Domain Event
 @Data
 @ToString
 @NoArgsConstructor
@@ -21,7 +20,7 @@ public class Registered extends AbstractEvent {
     private String status;
     private Date createdAt;
 
-    // Jackson에서 사용할 생성자 추가
+    // 🔧 Jackson이 사용할 생성자
     @JsonCreator
     public Registered(
         @JsonProperty("id") Long id,
@@ -39,9 +38,10 @@ public class Registered extends AbstractEvent {
         this.subscriptionFee = subscriptionFee;
         this.status = status;
         this.createdAt = createdAt;
+        this.setEventType("Registered"); // 이벤트 타입 설정
     }
 
-    // 기존 도메인 생성자
+    // 도메인 객체 → 이벤트로 변환
     public Registered(AiBookGeneration aggregate) {
         super(aggregate);
         this.id = aggregate.getId();
@@ -54,4 +54,3 @@ public class Registered extends AbstractEvent {
         this.setEventType("Registered");
     }
 }
-//>>> DDD / Domain Event

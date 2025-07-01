@@ -124,7 +124,13 @@ public class AiBookGeneration {
     }
 
     public void generateBookSummary(BookSummaryGenerate event) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'generateBookSummary'");
+        this.summary = event.getSummary();
+        this.status = "SUMMARY_CREATED";
+        this.updatedAt = new Date();
+    }
+
+    public void registerProcessedBook(Registered event) {
+        this.status = event.getStatus();
+        this.updatedAt = new Date(); // 또는 event.getCreatedAt()도 괜찮음
     }
 }
