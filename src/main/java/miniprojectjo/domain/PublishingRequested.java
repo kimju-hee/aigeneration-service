@@ -1,29 +1,45 @@
 package miniprojectjo.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import miniprojectjo.infra.AbstractEvent;
+
 import java.util.Date;
 
-//<<< DDD / Domain Event
 @Data
 @ToString
+@NoArgsConstructor
 public class PublishingRequested extends AbstractEvent {
 
-    private Long id;              // 이벤트 ID 또는 AI Book ID
-    private String title;         // 도서 제목
-    private Long authorId;        // 작성자 ID
-    private String status;        // 요청 상태 (e.g., REQUESTED)
-    private String content;       // 원고 내용
-    private Date createdAt;       // 생성 시각 (선택)
-    
-    private String eventType;  // 헤더 역할 (type="PublishingRequested")
+    private Long id;
+    private String title;
+    private Long authorId;
+    private String status;
+    private String content;
+    private Date createdAt;
+    private String eventType;
 
-    public PublishingRequested() {
-        super();
+    @JsonCreator
+    public PublishingRequested(
+        @JsonProperty("id") Long id,
+        @JsonProperty("title") String title,
+        @JsonProperty("authorId") Long authorId,
+        @JsonProperty("status") String status,
+        @JsonProperty("content") String content,
+        @JsonProperty("createdAt") Date createdAt
+    ) {
+        this.id = id;
+        this.title = title;
+        this.authorId = authorId;
+        this.status = status;
+        this.content = content;
+        this.createdAt = createdAt;
+        this.eventType = "PublishingRequested";
     }
 
     public PublishingRequested(Object aggregate) {
         super(aggregate);
+        this.eventType = "PublishingRequested";
     }
 }
-//>>> DDD / Domain Event

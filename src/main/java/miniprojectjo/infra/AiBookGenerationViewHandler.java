@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import miniprojectjo.config.kafka.KafkaProcessor;
 import miniprojectjo.domain.*;
 import org.springframework.cloud.stream.annotation.StreamListener;
-import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Service;
 
@@ -20,75 +19,55 @@ public class AiBookGenerationViewHandler {
 
     private final AiBookGenerationRepository aiBookGenerationRepository;
 
-    // ✅ Base64 문자열 디코딩 후 JSON 역직렬화 메서드
-    private <T> T decodePayload(String encodedPayload, Class<T> clazz) {
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private <T> T decodeEvent(Message<byte[]> message, Class<T> clazz) {
         try {
-            byte[] decodedBytes = Base64.getDecoder().decode(encodedPayload);
-            ObjectMapper objectMapper = new ObjectMapper();
-            return objectMapper.readValue(decodedBytes, clazz);
+            String base64 = new String(message.getPayload(), StandardCharsets.UTF_8);
+            String json = new String(Base64.getDecoder().decode(base64), StandardCharsets.UTF_8);
+            return objectMapper.readValue(json, clazz);
         } catch (Exception e) {
-            log.error("❌ Failed to decode payload into {}: {}", clazz.getSimpleName(), e.getMessage(), e);
+            log.error("❌ [{}] 역직렬화 실패: {}", clazz.getSimpleName(), e.getMessage(), e);
             return null;
         }
     }
 
     @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='BookSummaryGenerate'")
-    public void onBookSummaryGenerate(@Payload BookSummaryGenerate event) {
-        try {
-            if (event != null && event.validate()) {
-                log.info("✅ [BookSummaryGenerate 수신]: {}", event);
-                AiBookGeneration book = aiBookGenerationRepository.findById(event.getId()).orElse(null);
-                if (book != null) {
-                    book.generateBookSummary(event);
-                    aiBookGenerationRepository.save(book);
-                } else {
-                    log.warn("✅ [BookSummaryGenerate] ID {}의 엔티티 없음", event.getId());
-                }
+    public void onBookSummaryGenerate(Message<byte[]> message) {
+        BookSummaryGenerate event = decodeEvent(message, BookSummaryGenerate.class);
+        if (event != null && event.validate()) {
+            log.info("✅ BookSummaryGenerate 수신: {}", event);
+            AiBookGeneration book = aiBookGenerationRepository.findById(event.getId()).orElse(null);
+            if (book != null) {
+                book.generateBookSummary(event);
+                aiBookGenerationRepository.save(book);
             }
-        } catch (Exception e) {
-            log.error("❌ [BookSummaryGenerate 처리 중 오류]: {}", e.getMessage(), e);
+        }
+    }
+
+    @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='CoverImageGenerated'")
+    public void onCoverImageGenerated(Message<byte[]> message) {
+        CoverImageGenerated event = decodeEvent(message, CoverImageGenerated.class);
+        if (event != null && event.validate()) {
+            log.info("🖼️ CoverImageGenerated 수신: {}", event);
+            AiBookGeneration book = aiBookGenerationRepository.findById(event.getId()).orElse(null);
+            if (book != null) {
+                book.registerProcessedBook(event);
+                aiBookGenerationRepository.save(book);
+            }
         }
     }
 
     @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='Registered'")
     public void onRegistered(Message<byte[]> message) {
-        try {
-            String payloadBase64 = new String(message.getPayload(), StandardCharsets.UTF_8);
-            String decodedJson = new String(Base64.getDecoder().decode(payloadBase64), StandardCharsets.UTF_8);
-
-            ObjectMapper objectMapper = new ObjectMapper();
-            Registered event = objectMapper.readValue(decodedJson, Registered.class);
-
-            if (event != null && event.validate()) {
-                log.info("📦 Registered received: {}", event);
-                AiBookGeneration book = aiBookGenerationRepository.findById(event.getId()).orElse(null);
-                if (book != null) {
-                    book.registerProcessedBook(event);
-                    aiBookGenerationRepository.save(book);
-                }
+        Registered event = decodeEvent(message, Registered.class);
+        if (event != null && event.validate()) {
+            log.info("📦 Registered 수신: {}", event);
+            AiBookGeneration book = aiBookGenerationRepository.findById(event.getId()).orElse(null);
+            if (book != null) {
+                book.registerProcessedBook(event);
+                aiBookGenerationRepository.save(book);
             }
-        } catch (Exception e) {
-            log.error("❌ Registered 이벤트 처리 실패: {}", e.getMessage(), e);
-        }
-    }
-
-
-
-    @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='CoverImageGenerated'")
-    public void onCoverImageGenerated(@Payload CoverImageGenerated event) {
-        try {
-            if (event != null && event.validate()) {
-                log.info("🖼️ CoverImageGenerated received: {}", event);
-                AiBookGeneration book = aiBookGenerationRepository.findById(event.getId()).orElse(null);
-                if (book != null) {
-                    book.registerProcessedBook(event);
-                    aiBookGenerationRepository.save(book);
-                } else {
-                    log.warn("🖼️ [CoverImageGenerated] ID {}의 책이 존재하지 않습니다.", event.getId());
-                }
-            }
-        } catch (Exception e) {
-            log.error("❌ [CoverImageGenerated 처리 중 오류]: {}", e.getMessage(), e);
         }
     }
 }

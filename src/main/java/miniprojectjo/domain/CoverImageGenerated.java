@@ -4,6 +4,8 @@ import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import lombok.*;
 import miniprojectjo.infra.AbstractEvent;
@@ -12,6 +14,8 @@ import miniprojectjo.infra.AbstractEvent;
 @Data
 @ToString
 @NoArgsConstructor
+@JsonSerialize
+@JsonDeserialize
 public class CoverImageGenerated extends AbstractEvent {
 
     private Long id;

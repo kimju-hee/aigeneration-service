@@ -24,7 +24,7 @@ public class Registered extends AbstractEvent {
     private String status;
     private Date createdAt;
 
-    // ✅ JSON 역직렬화를 위한 생성자
+    // ✅ JSON 역직렬화를 위한 생성자ㅇ
     @JsonCreator
     public Registered(
         @JsonProperty("id") Long id,
