@@ -42,10 +42,7 @@ export PATH=$KAFKA_HOME/bin:$PATH
 echo "Kafka CLI PATH 설정 완료: $(which kafka-console-producer.sh)"
 
 echo "[6] Kafka docker-compose 실행"
-if [ -f "./docker-compose.yml" ]; then
-  docker-compose up -d
-else
-  echo "docker-compose.yml 파일이 현재 디렉토리에 없습니다. Kafka 컨테이너는 수동 실행이 필요합니다."
-fi
+docker-compose up -d
+
 
 echo "모든 초기 설정 완료!"
