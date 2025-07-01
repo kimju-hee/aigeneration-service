@@ -62,14 +62,13 @@ public class AiBookGenerationViewHandler {
                 if (book != null) {
                     book.registerProcessedBook(event);
                     aiBookGenerationRepository.save(book);
-                } else {
-                    log.warn("📦 [Registered] ID {}의 책이 존재하지 않습니다.", event.getId());
                 }
             }
         } catch (Exception e) {
             log.error("❌ [Registered 처리 중 오류]: {}", e.getMessage(), e);
         }
     }
+
 
     @StreamListener(value = KafkaProcessor.INPUT, condition = "headers['type']=='CoverImageGenerated'")
     public void onCoverImageGenerated(@Payload CoverImageGenerated event) {
