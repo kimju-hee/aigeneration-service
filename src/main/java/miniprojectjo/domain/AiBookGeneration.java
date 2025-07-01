@@ -7,6 +7,7 @@ import lombok.Data;
 import miniprojectjo.AigenerationApplication;
 // import miniprojectjo.domain.AiImageService; // 위치 확인!
 // import miniprojectjo.domain.*;
+import miniprojectjo.infra.AiBookGenerationRepository;
 
 @Entity
 @Table(name = "AiBookGeneration_table")

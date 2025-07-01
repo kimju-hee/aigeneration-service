@@ -1,40 +1,49 @@
 package miniprojectjo.infra;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import miniprojectjo.domain.*;
+import miniprojectjo.config.kafka.KafkaProcessor;
+import miniprojectjo.domain.AiBookGeneration;
+import miniprojectjo.infra.AiBookGenerationRepository;
+import miniprojectjo.domain.BookSummaryGenerate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Optional;
 
 @Service
-@Transactional
-@RequiredArgsConstructor
-@Slf4j
 public class PolicyHandler {
+
+    @Autowired
+    AiBookGenerationRepository aiBookGenerationRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private <T> T decodeEvent(String json, Class<T> clazz) {
+    private BookSummaryGenerate decodeEvent(String base64Encoded) {
         try {
-            return objectMapper.readValue(json, clazz);
+            String decodedJson = new String(Base64.getDecoder().decode(base64Encoded), StandardCharsets.UTF_8);
+            return objectMapper.readValue(decodedJson, BookSummaryGenerate.class);
         } catch (Exception e) {
-            log.error("❌ [{}] 역직렬화 실패: {}", clazz.getSimpleName(), e.getMessage());
-            throw new RuntimeException(e);
+            throw new RuntimeException("❌ 역직렬화 실패: " + e.getMessage(), e);
         }
     }
 
-    @StreamListener(value = "event-in", condition = "headers['type']=='BookSummaryGenerate'")
-    public void onBookSummaryGenerated(@Payload String payload) {
-        BookSummaryGenerate event = decodeEvent(payload, BookSummaryGenerate.class);
-        AiBookGeneration.subscriptionFeePolicy(new Registered(event));
-    }
+    @StreamListener(KafkaProcessor.INPUT)
+    public void onBookSummaryGenerated(@Payload String message) {
+        BookSummaryGenerate event = decodeEvent(message);
 
-    @StreamListener(value = "event-in", condition = "headers['type']=='CoverImageGenerated'")
-    public void onCoverImageGenerated(@Payload String payload) {
-        CoverImageGenerated event = decodeEvent(payload, CoverImageGenerated.class);
-        AiBookGeneration.registerProcessedBook(event);
+        Optional<AiBookGeneration> optional = aiBookGenerationRepository.findByManuscriptId(event.getManuscriptId());
+        if (optional.isPresent()) {
+            AiBookGeneration book = optional.get();
+            book.setSummary(event.getSummary());
+            book.setStatus("SUMMARY_GENERATED");
+            aiBookGenerationRepository.save(book);
+            System.out.println("✅ 요약 정보 저장 완료: " + book.getId());
+        } else {
+            System.out.println("❌ 해당 manuscriptId를 가진 AiBookGeneration이 없습니다: " + event.getManuscriptId());
+        }
     }
 }
