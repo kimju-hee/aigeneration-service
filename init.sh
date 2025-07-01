@@ -42,7 +42,13 @@ export PATH=$KAFKA_HOME/bin:$PATH
 echo "Kafka CLI PATH 설정 완료: $(which kafka-console-producer.sh)"
 
 echo "[6] Kafka docker-compose 실행"
-docker-compose up -d
+
+if [ -f "/workspace/aigeneration-service/docker-compose.yml" ]; then
+  cd /workspace/aigeneration-service
+  docker-compose up -d
+else
+  echo "docker-compose.yml 파일을 찾을 수 없습니다: /workspace/aigeneration-service"
+fi
 
 
 echo "모든 초기 설정 완료!"
