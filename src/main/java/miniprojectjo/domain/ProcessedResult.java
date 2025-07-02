@@ -13,13 +13,15 @@ public class ProcessedResult {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long Id; 
+    private Long Id;
 
     @Column(unique = true)
-    private Long manuscriptId;// manuscriptId를 PK로 활용 (1:1 매핑)
+    private Long manuscriptId; // manuscriptId를 PK처럼 사용 (1:1 매핑)
 
+    @Lob
     private String summary;
 
+    @Lob // 📌 URL이 255자를 넘을 수 있으므로 @Lob 추가
     private String coverImageUrl;
 
     private Integer subscriptionFee;
