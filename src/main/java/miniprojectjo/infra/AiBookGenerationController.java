@@ -60,11 +60,29 @@ public class AiBookGenerationController {
         AiBookGeneration entity = new AiBookGeneration();
         entity.setManuscriptId(1L);
         entity.setStatus("REQUESTED");
-        entity.setManuscriptContent("옛날 옛적에 백성공주가 살았는데, 그녀는 용감하고 지혜로웠습니다. 왕국에 큰 위기가 닥치자 그녀가 문제를 해결했습니다."); // 임시 원고 내용
+        entity.setManuscriptContent("옛날 옛적에 백성공주가 살았는데, 그녀는 용감하고 지혜로웠습니다. 왕국에 큰 위기가 닥치자 그녀가 문제를 해결했습니다.");
         entity.setSummary(null);
         entity.setCoverImageUrl(null);
         entity.setSubscriptionFee(null);
 
         return aiBookGenerationRepository.save(entity);
+    }
+
+    // 🧪 전체 자동 흐름 테스트용 API (요약 → 이미지 → 가격 → 등록)
+    @PostMapping("/{id}/mock-full-flow")
+    public void mockFullFlow(@PathVariable Long id) {
+        AiBookGeneration aggregate = aiBookGenerationRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("해당 ID의 도서를 찾을 수 없습니다: " + id));
+
+        PublishingRequested event = new PublishingRequested();
+        event.setId(aggregate.getManuscriptId());
+        event.setContent(aggregate.getManuscriptContent());
+
+        // 자동 흐름 실행
+        AiBookGeneration.generateBookSummary(event);
+        AiBookGeneration.generateCoverImage(event);
+        AiBookGeneration.registerProcessedBook(new BookSummaryGenerate(aggregate));
+        AiBookGeneration.registerProcessedBook(new CoverImageGenerated(aggregate));
+        AiBookGeneration.subscriptionFeePolicy(new Registered(aggregate));
     }
 }
