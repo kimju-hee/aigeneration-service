@@ -1,0 +1,22 @@
+# 민감 정보
+.env
+
+# Git
+.git
+.gitignore
+
+# IDE
+*.iml
+*.idea
+.vscode/
+
+# 로그
+*.log
+
+# 빌드 결과물
+# target/
+build/
+
+# 시스템 파일
+.DS_Store
+Thumbs.db

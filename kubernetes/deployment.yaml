@@ -16,13 +16,19 @@ spec:
     spec:
       containers:
         - name: aigeneration
-          image: "username/aigeneration:latest"
+          image: "project20registry.azurecr.io/aigeneration-service:latest"
           ports:
-            - containerPort: 8080
+            - containerPort: 8081
+          env:
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai-secret
+                  key: OPENAI_API_KEY
           readinessProbe:
             httpGet:
               path: '/actuator/health'
-              port: 8080
+              port: 8081
             initialDelaySeconds: 10
             timeoutSeconds: 2
             periodSeconds: 5
@@ -30,7 +36,7 @@ spec:
           livenessProbe:
             httpGet:
               path: '/actuator/health'
-              port: 8080
+              port: 8081
             initialDelaySeconds: 120
             timeoutSeconds: 2
             periodSeconds: 5

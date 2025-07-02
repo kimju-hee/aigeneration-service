@@ -23,8 +23,7 @@ sudo apt-get install -y azure-cli
 echo "[3] Helm 설치"
 curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 
-
-echo "[4] maven snapshot 빌드"
+echo "[4] Maven snapshot 빌드"
 mvn clean package -DskipTests
 
 echo "[5] Kafka 도구 다운로드 및 PATH 설정"
@@ -51,5 +50,11 @@ else
   echo "docker-compose.yml 파일을 찾을 수 없습니다: /workspace/aigeneration-service"
 fi
 
+echo "[7] kubectl 설치"
+cd /tmp
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/kubectl
+kubectl version --client || echo "kubectl 설치 실패!"
 
 echo "모든 초기 설정 완료!"
