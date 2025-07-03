@@ -5,7 +5,7 @@ metadata:
   labels:
     app: aigeneration
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: aigeneration
@@ -13,11 +13,11 @@ spec:
     metadata:
       labels:
         app: aigeneration
-        sidecar.istio.io/inject: "true"   # Istio 사이드카 주입 활성화
     spec:
       containers:
         - name: aigeneration
-          image: "project20registry.azurecr.io/aigeneration-service:latest"
+          image: project20registry.azurecr.io/aigeneration-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8081
           env:
@@ -26,19 +26,24 @@ spec:
                 secretKeyRef:
                   name: openai-secret
                   key: OPENAI_API_KEY
+            - name: SPRING_PROFILES_ACTIVE
+              value: default
           readinessProbe:
             httpGet:
-              path: '/actuator/health'
+              path: /actuator/health
               port: 8081
-            initialDelaySeconds: 60      # ✅ 앱 준비 시간 확보
-            timeoutSeconds: 2
-            periodSeconds: 5
-            failureThreshold: 10
+            initialDelaySeconds: 10
+            periodSeconds: 15
           livenessProbe:
             httpGet:
-              path: '/actuator/health'
+              path: /actuator/health
               port: 8081
-            initialDelaySeconds: 120
-            timeoutSeconds: 2
-            periodSeconds: 5
-            failureThreshold: 5
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

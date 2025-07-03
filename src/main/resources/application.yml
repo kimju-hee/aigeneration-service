@@ -19,7 +19,7 @@ spring:
     stream:
       kafka:
         binder:
-          brokers: my-kafka:9092
+          brokers: kafka.default.svc.cluster.local:9092
         streams:
           binder:
             configuration:
@@ -30,13 +30,13 @@ spring:
                   serde: org.apache.kafka.common.serialization.Serdes$StringSerde
       bindings:
         event-in:
-          group: aigeneration
           destination: miniprojectjo
+          group: aigeneration
           contentType: application/json
           consumer:
-            value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
-            properties:
-              spring.json.trusted.packages: miniprojectjo.domain.*, miniprojectjo.infra.*
+            configuration:
+              value.deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+              spring.json.trusted.packages: "miniprojectjo.domain.*,miniprojectjo.infra.*"
         event-out:
           destination: miniprojectjo
           contentType: application/json
@@ -54,3 +54,19 @@ logging:
   level:
     org.hibernate.type: trace
     org.springframework.cloud: debug
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
