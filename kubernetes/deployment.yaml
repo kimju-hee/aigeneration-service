@@ -13,6 +13,7 @@ spec:
     metadata:
       labels:
         app: aigeneration
+        sidecar.istio.io/inject: "true"   # Istio 를 우한 사이드카
     spec:
       containers:
         - name: aigeneration
