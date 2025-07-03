@@ -13,7 +13,7 @@ spec:
     metadata:
       labels:
         app: aigeneration
-        sidecar.istio.io/inject: "true"   # Istio 를 우한 사이드카
+        sidecar.istio.io/inject: "true"   # Istio 사이드카 주입 활성화
     spec:
       containers:
         - name: aigeneration
@@ -30,7 +30,7 @@ spec:
             httpGet:
               path: '/actuator/health'
               port: 8081
-            initialDelaySeconds: 10
+            initialDelaySeconds: 60      # ✅ 앱 준비 시간 확보
             timeoutSeconds: 2
             periodSeconds: 5
             failureThreshold: 10

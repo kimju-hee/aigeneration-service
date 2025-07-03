@@ -1,18 +1,19 @@
 package miniprojectjo.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.*;
 import miniprojectjo.infra.AbstractEvent;
 
 import java.util.Date;
 
+@Data
 @Getter
 @Setter
-@JsonSerialize
-@JsonDeserialize
+@ToString
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "eventType")
 public class Registered extends AbstractEvent {
 
     private Long id;
@@ -21,9 +22,27 @@ public class Registered extends AbstractEvent {
     private String coverImageUrl;
     private Integer subscriptionFee;
     private String status;
-    private Date createdAt;
 
-    // ✅ 역직렬화용 생성자
+    // Kafka 메시지에서 넘어오는 createdAt 값을 밀리초(Long)로 받음
+    private Long createdAt;
+
+    public Registered() {
+        super();
+        this.setEventType("Registered");
+    }
+
+    public Registered(AiBookGeneration aggregate) {
+        super(aggregate);
+        this.id = aggregate.getId();
+        this.manuscriptId = aggregate.getManuscriptId();
+        this.summary = aggregate.getSummary();
+        this.coverImageUrl = aggregate.getCoverImageUrl();
+        this.subscriptionFee = aggregate.getSubscriptionFee();
+        this.status = aggregate.getStatus();
+        this.createdAt = System.currentTimeMillis();
+        this.setEventType("Registered");
+    }
+
     @JsonCreator
     public Registered(
         @JsonProperty("id") Long id,
@@ -32,7 +51,7 @@ public class Registered extends AbstractEvent {
         @JsonProperty("coverImageUrl") String coverImageUrl,
         @JsonProperty("subscriptionFee") Integer subscriptionFee,
         @JsonProperty("status") String status,
-        @JsonProperty("createdAt") Date createdAt
+        @JsonProperty("createdAt") Long createdAt
     ) {
         this.id = id;
         this.manuscriptId = manuscriptId;
@@ -44,25 +63,8 @@ public class Registered extends AbstractEvent {
         this.setEventType("Registered");
     }
 
-    // ✅ 도메인 이벤트로 생성
-    public Registered(AiBookGeneration aggregate) {
-        super(aggregate);
-        this.id = aggregate.getId();
-        this.manuscriptId = aggregate.getManuscriptId();
-        this.summary = aggregate.getSummary();
-        this.coverImageUrl = aggregate.getCoverImageUrl();
-        this.subscriptionFee = aggregate.getSubscriptionFee();
-        this.status = "DONE";
-        this.createdAt = new Date();
-        this.setEventType("Registered");
-    }
-
-    // ✅ 서브용 생성자 (선택적 사용)
-    public Registered(BookSummaryGenerate event) {
-        this.manuscriptId = event.getManuscriptId();
-        this.summary = event.getSummary();
-        this.status = "SUMMARY_CREATED";
-        this.createdAt = event.getCreatedAt() != null ? event.getCreatedAt() : new Date();
-        this.setEventType("Registered");
+    @JsonIgnore
+    public Date getCreatedAtAsDate() {
+        return createdAt != null ? new Date(createdAt) : null;
     }
 }

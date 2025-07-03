@@ -94,7 +94,7 @@ public class AiBookGeneration {
             repository().save(entity);
 
             Registered published = new Registered(entity);
-            published.setCreatedAt(new Date());
+            published.setCreatedAt(System.currentTimeMillis()); // ✅ 수정
             published.publishAfterCommit();
         });
     }
@@ -105,7 +105,7 @@ public class AiBookGeneration {
             repository().save(entity);
 
             Registered published = new Registered(entity);
-            published.setCreatedAt(new Date());
+            published.setCreatedAt(System.currentTimeMillis()); // ✅ 수정
             published.publishAfterCommit();
         });
     }

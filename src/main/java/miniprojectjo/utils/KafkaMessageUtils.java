@@ -1,9 +1,9 @@
 package miniprojectjo.utils;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import miniprojectjo.domain.*;
 import miniprojectjo.infra.AbstractEvent;
@@ -18,7 +18,6 @@ public class KafkaMessageUtils {
 
     private static final ObjectMapper objectMapper;
 
-    // 이벤트 타입 ↔ 클래스 맵핑
     private static final Map<String, Class<? extends AbstractEvent>> EVENT_TYPE_MAP = new HashMap<>();
 
     static {
@@ -26,13 +25,11 @@ public class KafkaMessageUtils {
         objectMapper.activateDefaultTyping(
             BasicPolymorphicTypeValidator.builder()
                 .allowIfBaseType("miniprojectjo.domain")
-                .allowIfBaseType(java.util.Date.class)
                 .build(),
             ObjectMapper.DefaultTyping.NON_FINAL,
             JsonTypeInfo.As.PROPERTY
         );
 
-        // ✨ 이벤트 매핑 등록
         EVENT_TYPE_MAP.put("BookSummaryGenerate", BookSummaryGenerate.class);
         EVENT_TYPE_MAP.put("CoverImageGenerated", CoverImageGenerated.class);
         EVENT_TYPE_MAP.put("SubscriptionFeeCalculated", SubscriptionFeeCalculated.class);
@@ -41,12 +38,19 @@ public class KafkaMessageUtils {
 
     public static AbstractEvent decodeToAbstractEvent(String payload) throws Exception {
         try {
-            log.info("📩 Kafka 메시지 수신: {}", payload);
+            log.info("📩 Kafka 메시지 수신 (원본): {}", payload);
 
-            String json = decodeBase64Twice(payload);
+            // 큰따옴표 제거
+            String raw = stripQuotesIfExist(payload);
+
+            // Base64 디코딩 시도
+            String json = tryDecodeBase64(raw);
+            log.info("📦 디코딩된 JSON: {}", json);
+
+            // eventType 추출
             String eventType = extractEventType(json);
-
             Class<? extends AbstractEvent> eventClass = EVENT_TYPE_MAP.get(eventType);
+
             if (eventClass == null) {
                 throw new IllegalArgumentException("❌ 알 수 없는 eventType: " + eventType);
             }
@@ -59,26 +63,28 @@ public class KafkaMessageUtils {
         }
     }
 
-    // 🔄 공통 Base64 디코딩 메서드 (중첩 2회)
-    public static String decodeBase64Twice(String payload) {
-        if (payload != null && payload.length() > 1 &&
-            payload.startsWith("\"") && payload.endsWith("\"")) {
-            payload = payload.substring(1, payload.length() - 1);
-            log.info("🧹 양쪽 큰따옴표 제거 후 payload: {}", payload);
+    private static String stripQuotesIfExist(String input) {
+        if (input == null || input.isBlank()) return input;
+        if (input.startsWith("\"") && input.endsWith("\"")) {
+            return input.substring(1, input.length() - 1);
         }
-
-        try {
-            String onceDecoded = new String(Base64.getDecoder().decode(payload), StandardCharsets.UTF_8);
-            log.info("📦 1차 디코딩: {}", onceDecoded);
-            String twiceDecoded = new String(Base64.getDecoder().decode(onceDecoded), StandardCharsets.UTF_8);
-            log.info("📦 2차 디코딩 → 최종 JSON: {}", twiceDecoded);
-            return twiceDecoded;
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Base64 디코딩 실패: " + e.getMessage(), e);
-        }
+        return input;
     }
 
-    // 🧭 JSON 내 eventType 추출
+    private static String tryDecodeBase64(String input) {
+        try {
+            byte[] decodedBytes = Base64.getDecoder().decode(input);
+            String decoded = new String(decodedBytes, StandardCharsets.UTF_8);
+            // JSON 여부 간단 체크
+            if (decoded.trim().startsWith("{") || decoded.trim().startsWith("[")) {
+                return decoded;
+            }
+        } catch (IllegalArgumentException ignore) {
+            // 디코딩 실패 → 그대로 반환
+        }
+        return input;
+    }
+
     private static String extractEventType(String json) throws Exception {
         JsonNode rootNode = objectMapper.readTree(json);
         if (!rootNode.has("eventType")) {

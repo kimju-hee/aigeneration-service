@@ -4,11 +4,6 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
-
-import java.util.Base64;
-import java.nio.charset.StandardCharsets;
-
 import miniprojectjo.AigenerationApplication;
 import miniprojectjo.config.kafka.KafkaProcessor;
 import miniprojectjo.domain.*;
@@ -52,22 +47,17 @@ public abstract class AbstractEvent {
         MessageChannel outputChannel = processor.outboundTopic();
 
         try {
-            // JSON 직렬화
             String jsonEvent = toJson();
 
-            // Base64 인코딩
-            String encodedEvent = Base64.getEncoder().encodeToString(jsonEvent.getBytes(StandardCharsets.UTF_8));
+            System.out.println("📤 JSON 이벤트 발행: " + jsonEvent);
 
-            // Kafka로 전송
             outputChannel.send(
                 MessageBuilder
-                    .withPayload(encodedEvent)  // Base64 인코딩된 JSON 문자열
-                    .setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.TEXT_PLAIN)  // 중요: JSON 아님
+                    .withPayload(jsonEvent)
+                    .setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON)
                     .setHeader("type", getEventType())
                     .build()
             );
-
-            System.out.println("📦 Base64 인코딩된 이벤트 발행 완료: " + encodedEvent);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -109,13 +99,6 @@ public abstract class AbstractEvent {
     public String toJson() {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper.activateDefaultTyping(
-                BasicPolymorphicTypeValidator.builder()
-                    .allowIfBaseType("miniprojectjo.domain")
-                    .build(),
-                ObjectMapper.DefaultTyping.NON_FINAL,
-                JsonTypeInfo.As.PROPERTY
-            );
             return objectMapper.writeValueAsString(this);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("❌ JSON 직렬화 실패", e);

@@ -5,18 +5,14 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.Getter;
-import lombok.Setter;
+
+import lombok.Data;
+
 import miniprojectjo.infra.AbstractEvent;
 
 import java.util.Date;
 
-@Getter
-@Setter
-@JsonSerialize
-@JsonDeserialize
+@Data
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "eventType")
 public class CoverImageGenerated extends AbstractEvent {
 
@@ -32,14 +28,15 @@ public class CoverImageGenerated extends AbstractEvent {
         @JsonProperty("id") Long id,
         @JsonProperty("manuscriptId") Long manuscriptId,
         @JsonProperty("coverImageUrl") String coverImageUrl,
-        @JsonProperty("createdAt") Date createdAt
+        @JsonProperty("createdAt") Long createdAtMillis  // ← Long 타입
     ) {
         this.id = id;
         this.manuscriptId = manuscriptId;
         this.coverImageUrl = coverImageUrl;
-        this.createdAt = createdAt;
+        this.createdAt = new Date(createdAtMillis);      // ← 변환 처리
         this.setEventType("CoverImageGenerated");
     }
+
 
     public CoverImageGenerated(AiBookGeneration aggregate) {
         super(aggregate);
