@@ -1,0 +1,51 @@
+name: Build and Deploy to Azure AKS
+
+on:
+  push:
+    branches:
+      - main  # 또는 배포에 사용하는 브랜치 이름
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      REGISTRY_NAME: project20registry
+      IMAGE_NAME: aigeneration-service
+      RESOURCE_GROUP: project20-rsrcgrp
+      AKS_CLUSTER: project20-aks
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Log in to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Log in to Azure Container Registry (ACR)
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ env.REGISTRY_NAME }}.azurecr.io
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+
+    - name: Build and Push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+
+    - name: Set Kubernetes context
+      uses: azure/aks-set-context@v3
+      with:
+        resource-group: ${{ env.RESOURCE_GROUP }}
+        cluster-name: ${{ env.AKS_CLUSTER }}
+
+    - name: Restart deployment
+      run: kubectl rollout restart deployment aigeneration
