@@ -1,51 +1,61 @@
-name: Build and Deploy to Azure AKS
+trigger:
+  branches:
+    include:
+      - main
 
-on:
-  push:
-    branches:
-      - main  # 또는 배포에 사용하는 브랜치 이름
+variables:
+  REGISTRY_NAME: project20registry
+  IMAGE_NAME: aigeneration-service
+  RESOURCE_GROUP: project20-rsrcgrp
+  AKS_CLUSTER: project20-aks
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
+stages:
+- stage: BuildAndPush
+  displayName: Build & Push Docker Image
+  pool:
+    vmImage: ubuntu-latest
+  steps:
+  - task: Checkout@1
 
-    env:
-      REGISTRY_NAME: project20registry
-      IMAGE_NAME: aigeneration-service
-      RESOURCE_GROUP: project20-rsrcgrp
-      AKS_CLUSTER: project20-aks
+  - task: AzureCLI@2
+    name: loginACR
+    inputs:
+      azureSubscription: 'AzureServiceConnection' # 본인이 생성한 서비스 연결 이름
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        az acr login --name $(REGISTRY_NAME)
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+  - task: Docker@2
+    displayName: Build and Push Docker Image
+    inputs:
+      containerRegistry: '$(REGISTRY_NAME).azurecr.io'
+      repository: '$(IMAGE_NAME)'
+      command: buildAndPush
+      Dockerfile: '**/Dockerfile'
+      tags: |
+        latest
 
-    - name: Log in to Azure
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+- stage: DeployToAKS
+  displayName: Deploy to AKS via kubectl
+  dependsOn: BuildAndPush
+  pool:
+    vmImage: ubuntu-latest
+  steps:
+  - task: AzureCLI@2
+    name: setAKSContext
+    inputs:
+      azureSubscription: 'AzureServiceConnection'
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        az aks get-credentials \
+          --resource-group $(RESOURCE_GROUP) \
+          --name $(AKS_CLUSTER) \
+          --overwrite-existing
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Log in to Azure Container Registry (ACR)
-      uses: docker/login-action@v2
-      with:
-        registry: ${{ env.REGISTRY_NAME }}.azurecr.io
-        username: ${{ secrets.ACR_USERNAME }}
-        password: ${{ secrets.ACR_PASSWORD }}
-
-    - name: Build and Push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        tags: ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
-
-    - name: Set Kubernetes context
-      uses: azure/aks-set-context@v3
-      with:
-        resource-group: ${{ env.RESOURCE_GROUP }}
-        cluster-name: ${{ env.AKS_CLUSTER }}
-
-    - name: Restart deployment
-      run: kubectl rollout restart deployment aigeneration
+  - script: |
+      kubectl set image deployment/aigeneration \
+        aigeneration=$(REGISTRY_NAME).azurecr.io/$(IMAGE_NAME):latest
+      kubectl rollout status deployment/aigeneration
+    displayName: Update deployment image and rollout
